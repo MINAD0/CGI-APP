@@ -22,11 +22,16 @@ class ArticleDetailScreen extends StatelessWidget {
           },
         ),
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: _parseContent(articleContent),
+      body: InteractiveViewer(
+        minScale: 0.5, // Minimum zoom scale
+        maxScale: 5.0, // Maximum zoom scale
+        boundaryMargin: const EdgeInsets.all(20), // Allows panning beyond the screen edges
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: _parseContent(articleContent),
+          ),
         ),
       ),
     );
@@ -36,10 +41,10 @@ class ArticleDetailScreen extends StatelessWidget {
     List<Widget> widgets = [];
 
     content = content
-        .replaceAll(';', ',')
+        .replaceAll(';', '\n')
         .replaceAll(':', ':\n')
         .replaceAllMapped(
-            RegExp(r'(I\.|II\.|III\.|1°-|2°-|3°-|1\-|2\-|3\-|A\-|B\-)'),
+            RegExp(r'(I\.|II\.|III\.|1°|2°|3°|1\-|2\-|3\-|A\-|B\-|C\-)'),
             (match) => '\n${match.group(0)}');
 
     List<String> lines = content.split('\n');
@@ -54,21 +59,21 @@ class ArticleDetailScreen extends StatelessWidget {
             child: Text(
               line,
               style: TextStyle(
-                fontSize: 18,
+                fontSize: 16,
                 fontWeight: FontWeight.bold,
                 color: Colors.blue,
               ),
             ),
           ),
         );
-      } else if (line.startsWith('1°-') || line.startsWith('2°-') || line.startsWith('3°-')) {
+      } else if (line.startsWith('1°') || line.startsWith('2°') || line.startsWith('3°')) {
         widgets.add(
           Padding(
             padding: const EdgeInsets.only(left: 16.0, bottom: 4.0),
             child: Text(
               line,
               style: TextStyle(
-                fontSize: 16,
+                fontSize: 14,
                 fontWeight: FontWeight.w600,
                 color: Colors.green,
               ),
@@ -82,7 +87,7 @@ class ArticleDetailScreen extends StatelessWidget {
             child: Text(
               line,
               style: TextStyle(
-                fontSize: 16,
+                fontSize: 14,
                 fontWeight: FontWeight.bold,
                 color: Colors.purple,
               ),

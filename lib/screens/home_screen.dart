@@ -5,7 +5,6 @@ import 'chapitre_screen.dart';
 import 'theme_notifier.dart';
 import 'package:provider/provider.dart';
 
-
 class HomeScreen extends StatefulWidget {
   @override
   _HomeScreenState createState() => _HomeScreenState();
@@ -15,6 +14,7 @@ class _HomeScreenState extends State<HomeScreen> {
   TextEditingController _searchController = TextEditingController();
   List<Map<String, dynamic>> _livresData = [];
   List<Map<String, dynamic>> _filteredLivres = [];
+  Set<int> _expandedIndexes = {};
 
   @override
   void initState() {
@@ -47,9 +47,31 @@ class _HomeScreenState extends State<HomeScreen> {
   void _filterLivres() {
     final query = _searchController.text.toLowerCase();
     setState(() {
+      _expandedIndexes.clear();
       _filteredLivres = _livresData.where((item) {
-        return (item['livre'] ?? '').toString().toLowerCase().contains(query);
+        final livreTitleMatches =
+            (item['livre'] ?? '').toString().toLowerCase().contains(query);
+
+        final titresMatch = (item['titres'] as List).any((titre) {
+          return (titre['titre'] ?? '').toString().toLowerCase().contains(query);
+        });
+
+        return livreTitleMatches || titresMatch;
       }).toList();
+
+      for (int i = 0; i < _filteredLivres.length; i++) {
+        final livre = _filteredLivres[i];
+        final livreTitleMatches =
+            (livre['livre'] ?? '').toString().toLowerCase().contains(query);
+
+        final titresMatch = (livre['titres'] as List).any((titre) {
+          return (titre['titre'] ?? '').toString().toLowerCase().contains(query);
+        });
+
+        if (livreTitleMatches || titresMatch) {
+          _expandedIndexes.add(i);
+        }
+      }
     });
   }
 
@@ -61,8 +83,13 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDarkMode = theme.brightness == Brightness.dark;
+
     return Scaffold(
       appBar: AppBar(
+        backgroundColor: isDarkMode ? Colors.black : Colors.white,
+        foregroundColor: isDarkMode ? Colors.white : Colors.black,
         title: Text('Code Général des Impôts'),
         centerTitle: true,
         leading: Padding(
@@ -108,7 +135,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 itemCount: _filteredLivres.length,
                 itemBuilder: (context, index) {
                   final livre = _filteredLivres[index];
-                  return _buildLivreAccordion(livre);
+                  return _buildLivreAccordion(livre, index, isDarkMode);
                 },
               ),
             ),
@@ -118,63 +145,82 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-Widget _buildLivreAccordion(Map<String, dynamic> livre) {
-  String livreTitle = livre['livre'] ?? 'Livre Inconnu';
-  List<String> parts = livreTitle.split(';');
-  String mainTitle = parts[0].trim(); // Part before semicolon
-  String subTitle = parts.length > 1 ? parts[1].trim() : ''; // Part after semicolon
+  Widget _buildLivreAccordion(Map<String, dynamic> livre, int index, bool isDarkMode) {
+    String livreTitle = livre['livre'] ?? 'Livre Inconnu';
+    List<String> parts = livreTitle.split(';');
+    String mainTitle = parts[0].trim();
+    String subTitle = parts.length > 1 ? parts[1].trim() : '';
 
-  return Card(
-    elevation: 4,
-    margin: const EdgeInsets.symmetric(vertical: 8.0),
-    shape: RoundedRectangleBorder(
-      borderRadius: BorderRadius.circular(16),
-    ),
-    child: ExpansionTile(
-      title: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            mainTitle,
-            style: TextStyle(
-              fontWeight: FontWeight.bold,
-              fontSize: 18,
-            ),
-          ),
-          const SizedBox(height: 4), // Small space between title and subtitle
-          Text(
-            subTitle,
-            style: TextStyle(
-              color: const Color.fromARGB(255, 9, 55, 204),
-              fontSize: 14,
-            ),
-          ),
-        ],
+    return Card(
+      color: isDarkMode ? Colors.grey[850] : Colors.white,
+      elevation: 4,
+      margin: const EdgeInsets.symmetric(vertical: 8.0),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
       ),
-      leading: Icon(Icons.book, color: Colors.blueAccent),
-      children: (livre['titres'] as List).map((titre) {
-        return ListTile(
-          title: Text(
-            titre['titre'] ?? 'Titre Inconnu',
-            style: TextStyle(fontWeight: FontWeight.w500),
-          ),
-          trailing: Icon(Icons.arrow_forward_ios),
-          onTap: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => ChapitreScreen(
-                  titre: titre['titre'] ?? 'Titre Inconnu',
-                  chapitres: titre['chapitres'] ?? [],
-                  isDarkMode: false,
-                ),
+      child: ExpansionTile(
+        key: PageStorageKey<int>(index),
+        initiallyExpanded: _expandedIndexes.contains(index),
+        onExpansionChanged: (isExpanded) {
+          setState(() {
+            if (isExpanded) {
+              _expandedIndexes.add(index);
+            } else {
+              _expandedIndexes.remove(index);
+            }
+          });
+        },
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              mainTitle,
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 18,
+                color: isDarkMode ? Colors.white : Colors.black,
               ),
-            );
-          },
-        );
-      }).toList(),
-    ),
-  );
-}
-
+            ),
+            const SizedBox(height: 4),
+            Text(
+              subTitle,
+              style: TextStyle(
+                color: isDarkMode ? Colors.grey[400] : Colors.grey[800],
+                fontSize: 14,
+              ),
+            ),
+          ],
+        ),
+        leading: Image.asset(
+          'assets/cgi_logo.png',
+          height: 50,
+          width: 50,
+          fit: BoxFit.contain,
+        ),
+        children: (livre['titres'] as List).map((titre) {
+          return ListTile(
+            title: Text(
+              titre['titre'] ?? 'Titre Inconnu',
+              style: TextStyle(
+                fontWeight: FontWeight.w500,
+                color: isDarkMode ? Colors.lightBlueAccent : Colors.blueAccent,
+              ),
+            ),
+            trailing: Icon(Icons.arrow_forward_ios),
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => ChapitreScreen(
+                    titre: titre['titre'] ?? 'Titre Inconnu',
+                    chapitres: titre['chapitres'] ?? [],
+                  ),
+                ),
+              );
+            },
+          );
+        }).toList(),
+      ),
+    );
+  }
 }

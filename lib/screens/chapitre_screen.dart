@@ -4,27 +4,32 @@ import 'article_detail_screen.dart';
 class ChapitreScreen extends StatelessWidget {
   final String titre;
   final List<dynamic> chapitres;
-  final bool isDarkMode;
 
   ChapitreScreen({
     required this.titre,
     required this.chapitres,
-    required this.isDarkMode,
   });
 
   @override
   Widget build(BuildContext context) {
+    // Use the theme brightness to determine light or dark mode
+    final theme = Theme.of(context);
+    final isDarkMode = theme.brightness == Brightness.dark;
+
     final backgroundColor = isDarkMode ? Colors.black : Colors.white;
-    final textColor = isDarkMode ? Colors.white : Colors.black12;
+    final appBarColor = isDarkMode ? Colors.teal : Colors.blue;
+    final textColor = isDarkMode ? Colors.white : Colors.black;
+    final cardColor = isDarkMode ? Colors.grey[900] : Colors.white;
 
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: isDarkMode ? Colors.teal : Colors.blueAccent,
+        backgroundColor: appBarColor,
         title: Text(
           titre,
           style: TextStyle(
             fontWeight: FontWeight.bold,
-            fontSize: 14.5,
+            fontSize: 16,
+            color: textColor,
           ),
         ),
         centerTitle: true,
@@ -42,20 +47,22 @@ class ChapitreScreen extends StatelessWidget {
           itemCount: chapitres.length,
           itemBuilder: (context, index) {
             final chapitre = chapitres[index];
-            return _buildChapitreTile(context, chapitre, textColor);
+            return _buildChapitreTile(
+                context, chapitre, textColor, cardColor, isDarkMode);
           },
         ),
       ),
     );
   }
 
-  Widget _buildChapitreTile(
-      BuildContext context, Map<String, dynamic> chapitre, Color textColor) {
+  Widget _buildChapitreTile(BuildContext context, Map<String, dynamic> chapitre,
+      Color textColor, Color? cardColor, bool isDarkMode) {
     final String chapitreTitre = chapitre['titre'] ?? 'Sans Titre';
     final List<dynamic> sections = chapitre['sections'] ?? [];
     final List<dynamic> articles = chapitre['articles'] ?? [];
 
     return Card(
+      color: cardColor,
       margin: const EdgeInsets.symmetric(vertical: 8.0),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.0)),
       child: ExpansionTile(
@@ -66,25 +73,29 @@ class ChapitreScreen extends StatelessWidget {
           style: TextStyle(
             fontSize: 18,
             fontWeight: FontWeight.w600,
-            color: Colors.blueAccent,
+            color: isDarkMode ? Colors.lightBlueAccent : Colors.blueAccent,
           ),
         ),
         children: sections.isNotEmpty
             ? sections
-                .map((section) => _buildSectionTile(context, section))
+                .map((section) => _buildSectionTile(
+                    context, section, textColor, cardColor, isDarkMode))
                 .toList()
             : articles
-                .map((article) => _buildArticleTile(context, article))
+                .map((article) =>
+                    _buildArticleTile(context, article, textColor, isDarkMode))
                 .toList(),
       ),
     );
   }
 
-  Widget _buildSectionTile(BuildContext context, Map<String, dynamic> section) {
+  Widget _buildSectionTile(BuildContext context, Map<String, dynamic> section,
+      Color textColor, Color? cardColor, bool isDarkMode) {
     final String sectionTitle = section['titre'] ?? 'Sans Titre';
     final List<dynamic> articles = section['articles'] ?? [];
 
     return Card(
+      color: cardColor,
       margin: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.0)),
       child: ExpansionTile(
@@ -94,18 +105,20 @@ class ChapitreScreen extends StatelessWidget {
           sectionTitle,
           style: TextStyle(
             fontSize: 16,
-            fontWeight: FontWeight.w500,
-            color: Colors.teal,
+            fontWeight: FontWeight.bold,
+            color: isDarkMode ? Colors.lightGreenAccent : Colors.teal,
           ),
         ),
         children: articles
-            .map((article) => _buildArticleTile(context, article))
+            .map((article) =>
+                _buildArticleTile(context, article, textColor, isDarkMode))
             .toList(),
       ),
     );
   }
 
-  Widget _buildArticleTile(BuildContext context, Map<String, dynamic> article) {
+  Widget _buildArticleTile(BuildContext context, Map<String, dynamic> article,
+      Color textColor, bool isDarkMode) {
     final String articleTitle = "Article ${article['numero'] ?? 'Sans Titre'}";
     final String articlePreview =
         (article['contenu'] ?? '').split(' ').take(10).join(' ') + '...';
@@ -127,14 +140,20 @@ class ChapitreScreen extends StatelessWidget {
           style: TextStyle(
             fontSize: 16,
             fontWeight: FontWeight.w500,
-            color: Colors.deepOrange,
+            color: isDarkMode ? Colors.orangeAccent : Colors.deepOrange,
           ),
         ),
         subtitle: Text(
           articlePreview,
-          style: TextStyle(fontSize: 14, color: Colors.red),
+          style: TextStyle(
+            fontSize: 14,
+            color: isDarkMode ? Colors.grey[400] : Colors.red,
+          ),
         ),
-        leading: Icon(Icons.article, color: Colors.deepOrange),
+        leading: Icon(
+          Icons.article,
+          color: isDarkMode ? Colors.orangeAccent : Colors.deepOrange,
+        ),
       ),
     );
   }
