@@ -3,7 +3,9 @@ import 'dart:convert';
 import 'package:flutter/services.dart';
 import 'chapitre_screen.dart';
 import 'theme_notifier.dart';
+import 'article_detail_screen.dart';
 import 'package:provider/provider.dart';
+import '../recent_provider.dart';
 
 class HomeScreen extends StatefulWidget {
   @override
@@ -13,14 +15,14 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   TextEditingController _searchController = TextEditingController();
   List<Map<String, dynamic>> _livresData = [];
-  List<Map<String, dynamic>> _filteredLivres = [];
-  Set<int> _expandedIndexes = {};
+  List<dynamic> _filteredResults = [];
+  bool _isSearching = false;
 
   @override
   void initState() {
     super.initState();
     _loadData();
-    _searchController.addListener(_filterLivres);
+    _searchController.addListener(_filterResults);
   }
 
   Future<void> _loadData() async {
@@ -32,44 +34,67 @@ class _HomeScreenState extends State<HomeScreen> {
       setState(() {
         _livresData = livres
             .map((livre) => {
-                  'livre': livre['titre'] ?? 'Livre Inconnu',
-                  'titres': livre['titres'] ?? [],
-                })
+          'livre': livre['titre'] ?? 'Livre Inconnu',
+          'titres': livre['titres'] ?? [],
+        })
             .toList()
             .cast<Map<String, dynamic>>();
-        _filteredLivres = List<Map<String, dynamic>>.from(_livresData);
+        _filteredResults = _livresData; // Initially show "livres"
       });
     } catch (e) {
       print('Error loading JSON data: $e');
     }
   }
 
-  void _filterLivres() {
-    final query = _searchController.text.toLowerCase();
+  void _filterResults() {
+    final query = _searchController.text.toLowerCase().trim();
+    final articleMatch = RegExp(r'article\s+(\d+)').firstMatch(query); // Match "article <number>"
+
+    if (query.isEmpty) {
+      setState(() {
+        _isSearching = false; // Reset to show initial view
+        _filteredResults = _livresData;
+      });
+      return;
+    }
+
     setState(() {
-      _expandedIndexes.clear();
-      _filteredLivres = _livresData.where((item) {
-        final livreTitleMatches =
-            (item['livre'] ?? '').toString().toLowerCase().contains(query);
+      _isSearching = true; // Activate search
+      _filteredResults = [];
 
-        final titresMatch = (item['titres'] as List).any((titre) {
-          return (titre['titre'] ?? '').toString().toLowerCase().contains(query);
-        });
+      for (final livre in _livresData) {
+        for (final titre in (livre['titres'] ?? [])) {
+          for (final chapitre in (titre['chapitres'] ?? [])) {
+            for (final article in (chapitre['articles'] ?? [])) {
+              final articleNumber =
+              (article['numero'] ?? '').toString().toLowerCase();
+              final articleContent =
+              (article['contenu'] ?? '').toString().toLowerCase();
 
-        return livreTitleMatches || titresMatch;
-      }).toList();
-
-      for (int i = 0; i < _filteredLivres.length; i++) {
-        final livre = _filteredLivres[i];
-        final livreTitleMatches =
-            (livre['livre'] ?? '').toString().toLowerCase().contains(query);
-
-        final titresMatch = (livre['titres'] as List).any((titre) {
-          return (titre['titre'] ?? '').toString().toLowerCase().contains(query);
-        });
-
-        if (livreTitleMatches || titresMatch) {
-          _expandedIndexes.add(i);
+              if (articleMatch != null) {
+                // If query matches "article <number>", search for that specific number
+                final searchedNumber = articleMatch.group(1)!;
+                if (articleNumber == searchedNumber) {
+                  _filteredResults.add({
+                    'type': 'article',
+                    'article': article,
+                    'livre': livre['livre'] ?? 'Livre Inconnu',
+                    'chapitre': chapitre['titre'] ?? 'Chapitre Inconnu',
+                    'titre': titre['titre'] ?? 'Titre Inconnu',
+                  });
+                }
+              } else if (articleContent.contains(query)) {
+                // Fallback to general search for content
+                _filteredResults.add({
+                  'type': 'article',
+                  'article': article,
+                  'livre': livre['livre'] ?? 'Livre Inconnu',
+                  'chapitre': chapitre['titre'] ?? 'Chapitre Inconnu',
+                  'titre': titre['titre'] ?? 'Titre Inconnu',
+                });
+              }
+            }
+          }
         }
       }
     });
@@ -88,7 +113,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: isDarkMode ? Colors.black : Colors.white,
+        backgroundColor: isDarkMode ? Colors.teal : Colors.white,
         foregroundColor: isDarkMode ? Colors.white : Colors.black,
         title: Text('Code Général des Impôts'),
         centerTitle: true,
@@ -122,7 +147,7 @@ class _HomeScreenState extends State<HomeScreen> {
             TextField(
               controller: _searchController,
               decoration: InputDecoration(
-                hintText: 'Search Livres or Titres...',
+                hintText: 'Search Articles...',
                 prefixIcon: Icon(Icons.search),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(8),
@@ -132,10 +157,12 @@ class _HomeScreenState extends State<HomeScreen> {
             const SizedBox(height: 16),
             Expanded(
               child: ListView.builder(
-                itemCount: _filteredLivres.length,
+                itemCount: _filteredResults.length,
                 itemBuilder: (context, index) {
-                  final livre = _filteredLivres[index];
-                  return _buildLivreAccordion(livre, index, isDarkMode);
+                  final result = _filteredResults[index];
+                  return _isSearching
+                      ? _buildSearchCard(context, result, isDarkMode)
+                      : _buildLivreAccordion(context, result, index, isDarkMode);
                 },
               ),
             ),
@@ -145,7 +172,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildLivreAccordion(Map<String, dynamic> livre, int index, bool isDarkMode) {
+  Widget _buildLivreAccordion(BuildContext context, Map<String, dynamic> livre, int index, bool isDarkMode) {
     String livreTitle = livre['livre'] ?? 'Livre Inconnu';
     List<String> parts = livreTitle.split(';');
     String mainTitle = parts[0].trim();
@@ -159,61 +186,97 @@ class _HomeScreenState extends State<HomeScreen> {
         borderRadius: BorderRadius.circular(16),
       ),
       child: ExpansionTile(
-        key: PageStorageKey<int>(index),
-        initiallyExpanded: _expandedIndexes.contains(index),
-        onExpansionChanged: (isExpanded) {
-          setState(() {
-            if (isExpanded) {
-              _expandedIndexes.add(index);
-            } else {
-              _expandedIndexes.remove(index);
-            }
-          });
-        },
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        title: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            Text(
-              mainTitle,
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 18,
-                color: isDarkMode ? Colors.white : Colors.black,
-              ),
+            // Add logo
+            Image.asset(
+              'assets/cgi_logo.png',
+              height: 30,
+              width: 30,
+              fit: BoxFit.contain,
             ),
-            const SizedBox(height: 4),
-            Text(
-              subTitle,
-              style: TextStyle(
-                color: isDarkMode ? Colors.grey[400] : Colors.grey[800],
-                fontSize: 14,
+            const SizedBox(width: 10), // Space between logo and text
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Main Title
+                  Text(
+                    mainTitle,
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 18,
+                      color: isDarkMode ? Colors.white : Colors.black,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 4), // Separation space
+                  // Sub Title with lighter color
+                  Text(
+                    subTitle,
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontStyle: FontStyle.italic,
+                      color: isDarkMode ? Colors.grey[400] : Colors.grey[700],
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  // const Divider(height: 10, thickness: 1, color: Colors.grey), // Line Separator
+                ],
               ),
             ),
           ],
         ),
-        leading: Image.asset(
-          'assets/cgi_logo.png',
-          height: 50,
-          width: 50,
-          fit: BoxFit.contain,
-        ),
-        children: (livre['titres'] as List).map((titre) {
+        children: (livre['titres'] ?? []).map<Widget>((titre) {
+          String titreText = titre['titre'] ?? 'Titre Inconnu';
+          List<String> titreParts = titreText.split(';');
+          String titreMain = titreParts[0].trim();
+          String titreSub = titreParts.length > 1 ? titreParts[1].trim() : '';
+
           return ListTile(
-            title: Text(
-              titre['titre'] ?? 'Titre Inconnu',
-              style: TextStyle(
-                fontWeight: FontWeight.w500,
-                color: isDarkMode ? Colors.lightBlueAccent : Colors.blueAccent,
-              ),
+            title: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  titreMain,
+                  style: TextStyle(
+                    fontWeight: FontWeight.w500,
+                    fontSize: 16,
+                    color: isDarkMode ? Colors.lightBlueAccent : Colors.blueAccent,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  titreSub,
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: isDarkMode ? Colors.grey[400] : Colors.grey[700],
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
             ),
             trailing: Icon(Icons.arrow_forward_ios),
             onTap: () {
+              final recentProvider = Provider.of<RecentProvider>(context, listen: false);
+              recentProvider.addToRecent({
+                'livre': livre['livre'],
+                'titres': livre['titres'],
+                'chapitres': titre['chapitres'] ?? [],
+              });
               Navigator.push(
                 context,
                 MaterialPageRoute(
                   builder: (context) => ChapitreScreen(
-                    titre: titre['titre'] ?? 'Titre Inconnu',
+                    titre: titreMain,
                     chapitres: titre['chapitres'] ?? [],
+                    livreTitle: livreTitle,
                   ),
                 ),
               );
@@ -222,5 +285,63 @@ class _HomeScreenState extends State<HomeScreen> {
         }).toList(),
       ),
     );
+  }
+
+
+
+  Widget _buildSearchCard(BuildContext context, Map<String, dynamic> result, bool isDarkMode) {
+    final cardColor = isDarkMode ? Colors.grey[850] : Colors.white;
+
+    if (result['type'] == 'article') {
+      final article = result['article'];
+      final recentProvider =
+      Provider.of<RecentProvider>(context, listen: false);
+      return Card(
+        color: cardColor,
+        margin: const EdgeInsets.symmetric(vertical: 8.0),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: ListTile(
+          title: Text(
+            "Article ${article['numero'] ?? 'N/A'}",
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 16,
+              color: isDarkMode ? Colors.white : Colors.black,
+            ),
+          ),
+          subtitle: Text(
+            (article['contenu'] ?? '').split(' ').take(10).join(' ') + '...',
+            style: TextStyle(
+              fontSize: 14,
+              color: isDarkMode ? Colors.grey[400] : Colors.grey[800],
+            ),
+          ),
+          trailing: Icon(
+            Icons.arrow_forward_ios,
+            color: isDarkMode ? Colors.white : Colors.black,
+          ),
+          onTap: () {
+            recentProvider.addToRecent({
+              'article': article,
+              'livre': result['livre'],
+              'chapitre': result['chapitre'],
+              'titre': result['titre'],
+            });
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => ArticleDetailScreen(
+                  article: article,
+                ),
+              ),
+            );
+          },
+        ),
+      );
+    }
+
+    return SizedBox.shrink();
   }
 }

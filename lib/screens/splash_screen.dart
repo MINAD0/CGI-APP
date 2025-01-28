@@ -4,7 +4,7 @@ import 'dart:async';
 class SplashScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    Timer(Duration(seconds: 3), () {
+    Timer(Duration(seconds: 4), () {
       Navigator.pushReplacementNamed(context, '/main');
     });
 

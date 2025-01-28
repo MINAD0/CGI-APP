@@ -1,6 +1,6 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <application
-        android:label="code_general_maroc"
+        android:label="CGI Maroc"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity
