@@ -65,8 +65,8 @@ class _MainScreenState extends State<MainScreen> {
     final theme = Theme.of(context);
     final isDarkMode = theme.brightness == Brightness.dark;
 
-    final backgroundColor = isDarkMode ? Colors.black : Colors.white;
-    final textColor = isDarkMode ? Colors.white : Colors.black;
+    // final backgroundColor = isDarkMode ? Colors.black : Colors.white;
+    // final textColor = isDarkMode ? Colors.white : Colors.black;
     return Scaffold(
       body: _screens[_currentIndex],
       bottomNavigationBar: BottomNavigationBar(

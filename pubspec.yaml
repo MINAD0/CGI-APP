@@ -1,5 +1,5 @@
 name: code_general_maroc
-description: "A new Flutter project."
+description: "Code Général des Impôts du Maroc"
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
 publish_to: 'none' # Remove this line if you wish to publish to pub.dev
@@ -16,7 +16,7 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
 # In Windows, build-name is used as the major, minor, and patch parts
 # of the product and file versions while build-number is used as the build suffix.
-version: 1.0.0+1
+version: 1.0.1+2
 
 environment:
   sdk: ^3.6.1
@@ -74,6 +74,7 @@ flutter:
     - assets/output2025.json
     - assets/cgi_logo.png
     - assets/company_logo.png
+    - assets/appLogo.png
     - assets/icons/folder-open-regular.svg
     - assets/icons/newspaper-regular.svg
     - assets/icons/house-solid.svg
@@ -81,6 +82,7 @@ flutter:
     - assets/icons/bookmark-regular.svg
     - assets/icons/book-solid.svg
     - assets/icons/paperclip-solid.svg
+    - assets/icons/link-solid.svg
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

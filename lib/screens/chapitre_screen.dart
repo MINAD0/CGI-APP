@@ -1,17 +1,16 @@
 import 'package:flutter/material.dart';
 import 'article_detail_screen.dart';
-import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
 class ChapitreScreen extends StatelessWidget {
-  final String titre;
   final List<dynamic> chapitres;
-  final String livreTitle;
+  final String livre;
+  final String titre;
 
   ChapitreScreen({
-    required this.titre,
     required this.chapitres,
-    required this.livreTitle,
+    required this.livre,
+    required this.titre,
   });
 
   @override
@@ -57,7 +56,7 @@ class ChapitreScreen extends StatelessWidget {
               textColor,
               cardColor,
               isDarkMode,
-              livreTitle,
+              livre,
             );
           },
         ),
@@ -71,7 +70,7 @@ class ChapitreScreen extends StatelessWidget {
       Color textColor,
       Color? cardColor,
       bool isDarkMode,
-      String livreTitle,
+      String livre,
       ) {
     final String chapitreTitre = chapitre['titre'] ?? 'Sans Titre';
     List<String> titreParts = chapitreTitre.split(';');
@@ -127,25 +126,26 @@ class ChapitreScreen extends StatelessWidget {
         ),
         children: sections.isNotEmpty
             ? sections
-            .map((section) => _buildSectionTile(
-          context,
-          section,
-          chapitreTitre,
-          textColor,
-          cardColor,
-          isDarkMode,
-        ))
-            .toList()
+                .map((section) => _buildSectionTile(
+                      context,
+                      section,
+                      chapitreTitre,
+                      textColor,
+                      cardColor,
+                      isDarkMode,
+                      livre,
+                    ))
+                .toList()
             : articles
-            .map((article) => _buildArticleTile(
-          context,
-          article,
-          chapitre['livre'] ?? 'Livre inconnu',
-          chapitreTitre,
-          titre,
-          isDarkMode,
-        ))
-            .toList(),
+                .map((article) => _buildArticleTile(
+                      context,
+                      article,
+                      livre,
+                      chapitre['titre'] ?? 'Sans Titre',
+                      this.titre,
+                      isDarkMode,
+                    ))
+                .toList(),
       ),
     );
   }
@@ -157,6 +157,7 @@ class ChapitreScreen extends StatelessWidget {
       Color textColor,
       Color? cardColor,
       bool isDarkMode,
+      String livre,
       ) {
     final String sectionTitle = section['titre'] ?? 'Sans Titre';
     final List<dynamic> articles = section['articles'] ?? [];
@@ -182,9 +183,9 @@ class ChapitreScreen extends StatelessWidget {
             .map((article) => _buildArticleTile(
           context,
           article,
-          section['livre'] ?? 'Livre inconnu',
+          livre,
           chapitreTitre,
-          titre,
+          sectionTitle,
           isDarkMode,
         ))
             .toList(),
@@ -203,6 +204,11 @@ class ChapitreScreen extends StatelessWidget {
     final String articleTitle = "Article ${article['numero'] ?? 'Sans Titre'}";
     final String articlePreview =
         (article['contenu'] ?? '').split(' ').take(10).join(' ') + '...';
+
+    // Extract subtitle from chapitre
+    List<String> parts = chapitre.split(';');
+    String mainTitle = parts[0].trim();
+    String subTitre = parts.length > 1 ? parts[1].trim() : '';
 
     return ListTile(
       contentPadding:
@@ -227,23 +233,85 @@ class ChapitreScreen extends StatelessWidget {
         maxLines: 2,
       ),
       leading: SvgPicture.asset(
-        'assets/icons/newspaper-regular.svg', // Path to your SVG file
-        height: 20, // Adjust size as needed
+        'assets/icons/newspaper-regular.svg',
+        height: 20,
         width: 20,
         color: isDarkMode ? Colors.orangeAccent : Colors.teal,
       ),
       onTap: () {
+        List<Map<String, dynamic>> chapterArticles = [];
+        
+        // Find the current chapter
+        var currentChapter = chapitres.firstWhere(
+          (chap) => chap['titre'] == chapitre,
+          orElse: () => null,
+        );
+
+        if (currentChapter != null) {
+          if (currentChapter['sections'] != null && 
+              currentChapter['sections'].any((s) => s['titre'] == titre)) {
+            var currentSection = currentChapter['sections'].firstWhere(
+              (section) => section['titre'] == titre,
+              orElse: () => null,
+            );
+
+            if (currentSection != null) {
+              chapterArticles = (currentSection['articles'] as List? ?? [])
+                  .map((a) => {
+                        ...a as Map<String, dynamic>,
+                        'livre': this.livre,
+                        'chapitre': mainTitle,
+                        'section': titre,
+                        'titre': this.titre,
+                        'subTitre': subTitre,
+                      })
+                  .toList()
+                  .cast<Map<String, dynamic>>();
+            }
+          } else {
+            chapterArticles = (currentChapter['articles'] as List? ?? [])
+                .map((a) => {
+                      ...a as Map<String, dynamic>,
+                      'livre': this.livre,
+                      'chapitre': mainTitle,
+                      'titre': this.titre,
+                      'subTitre': subTitre,
+                    })
+                .toList()
+                .cast<Map<String, dynamic>>();
+          }
+        }
+
+        // Safety check to ensure we have articles
+        if (chapterArticles.isEmpty) {
+          print('No articles found');
+          return;
+        }
+
+        // Find the index of the current article
+        final currentIndex = chapterArticles.indexWhere(
+          (a) => a['numero'] == article['numero']
+        );
+
+        // Safety check for valid index
+        if (currentIndex == -1) {
+          print('Article not found');
+          return;
+        }
+
         Navigator.push(
           context,
           MaterialPageRoute(
             builder: (context) => ArticleDetailScreen(
               article: {
                 ...article,
-                'livre': livre,
-                'chapitre': chapitre,
-                'titre': titre,
-                'livre': livreTitle,
+                'livre': this.livre,
+                'titre': this.titre,
+                'chapitre': mainTitle,
+                'subTitre': subTitre,
               },
+              articles: chapterArticles,
+              currentIndex: currentIndex,
             ),
           ),
         );
