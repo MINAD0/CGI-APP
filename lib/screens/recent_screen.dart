@@ -50,7 +50,7 @@ class RecentScreen extends StatelessWidget {
         String titreText = livre['livre'] ?? 'Titre Inconnu';
         List<String> titreParts = titreText.split(';');
         String titreMain = titreParts[0].trim();
-        String titreSub = titreParts.length > 1 ? titreParts[1].trim() : '';
+        // String titreSub = titreParts.length > 1 ? titreParts[1].trim() : '';
         // print(titreMain);
 
         return RecentCard(
@@ -61,9 +61,9 @@ class RecentScreen extends StatelessWidget {
               context,
               MaterialPageRoute(
                 builder: (context) => ChapitreScreen(
-                  titre: titreMain ?? 'Unknown Title',
-                  chapitres: livre['chapitres'] ?? [], // Pass full chapitres
-                  livreTitle: livre['chapitre'] ?? 'Unknown Title',
+                  chapitres: livre['chapitres'] ?? [],
+                  livre: livre['livre'] ?? 'Livre inconnu',
+                  titre: livre['titre'] ?? 'Titre inconnu',
                 ),
               ),
             );

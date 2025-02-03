@@ -48,49 +48,61 @@ class _HomeScreenState extends State<HomeScreen> {
 
   void _filterResults() {
     final query = _searchController.text.toLowerCase().trim();
-    final articleMatch = RegExp(r'article\s+(\d+)').firstMatch(query); // Match "article <number>"
+    final articleMatch = RegExp(r'article\s+(\d+)').firstMatch(query);
 
     if (query.isEmpty) {
       setState(() {
-        _isSearching = false; // Reset to show initial view
+        _isSearching = false;
         _filteredResults = _livresData;
       });
       return;
     }
 
     setState(() {
-      _isSearching = true; // Activate search
+      _isSearching = true;
       _filteredResults = [];
 
       for (final livre in _livresData) {
+        String livreTitle = livre['livre'] ?? 'Livre Inconnu';
+        
         for (final titre in (livre['titres'] ?? [])) {
+          String titreTitle = titre['titre'] ?? 'Titre Inconnu';
+          
           for (final chapitre in (titre['chapitres'] ?? [])) {
+            String chapitreTitle = chapitre['titre'] ?? 'Chapitre Inconnu';
+            
             for (final article in (chapitre['articles'] ?? [])) {
-              final articleNumber =
-              (article['numero'] ?? '').toString().toLowerCase();
-              final articleContent =
-              (article['contenu'] ?? '').toString().toLowerCase();
+              final articleNumber = (article['numero'] ?? '').toString().toLowerCase();
+              final articleContent = (article['contenu'] ?? '').toString().toLowerCase();
 
               if (articleMatch != null) {
-                // If query matches "article <number>", search for that specific number
                 final searchedNumber = articleMatch.group(1)!;
                 if (articleNumber == searchedNumber) {
                   _filteredResults.add({
                     'type': 'article',
-                    'article': article,
-                    'livre': livre['livre'] ?? 'Livre Inconnu',
-                    'chapitre': chapitre['titre'] ?? 'Chapitre Inconnu',
-                    'titre': titre['titre'] ?? 'Titre Inconnu',
+                    'article': {
+                      ...article,
+                      'livre': livreTitle,
+                      'titre': titreTitle,
+                      'chapitre': chapitreTitle,
+                    },
+                    'livre': livreTitle,
+                    'chapitre': chapitreTitle,
+                    'titre': titreTitle,
                   });
                 }
               } else if (articleContent.contains(query)) {
-                // Fallback to general search for content
                 _filteredResults.add({
                   'type': 'article',
-                  'article': article,
-                  'livre': livre['livre'] ?? 'Livre Inconnu',
-                  'chapitre': chapitre['titre'] ?? 'Chapitre Inconnu',
-                  'titre': titre['titre'] ?? 'Titre Inconnu',
+                  'article': {
+                    ...article,
+                    'livre': livreTitle,
+                    'titre': titreTitle,
+                    'chapitre': chapitreTitle,
+                  },
+                  'livre': livreTitle,
+                  'chapitre': chapitreTitle,
+                  'titre': titreTitle,
                 });
               }
             }
@@ -270,13 +282,18 @@ class _HomeScreenState extends State<HomeScreen> {
                 'titres': livre['titres'],
                 'chapitres': titre['chapitres'] ?? [],
               });
+
+              // Extract the main titles before semicolon
+              String livreTitle = livre['livre'].toString().split(';')[0].trim();
+              String titreTitle = titre['titre'].toString().split(';')[0].trim();
+
               Navigator.push(
                 context,
                 MaterialPageRoute(
                   builder: (context) => ChapitreScreen(
-                    titre: titreMain,
                     chapitres: titre['chapitres'] ?? [],
-                    livreTitle: livreTitle,
+                    livre: livreTitle,  // Pass the main livre title
+                    titre: titreTitle,  // Pass the main titre title
                   ),
                 ),
               );
@@ -286,8 +303,6 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
     );
   }
-
-
 
   Widget _buildSearchCard(BuildContext context, Map<String, dynamic> result, bool isDarkMode) {
     final cardColor = isDarkMode ? Colors.grey[850] : Colors.white;
@@ -333,7 +348,12 @@ class _HomeScreenState extends State<HomeScreen> {
               context,
               MaterialPageRoute(
                 builder: (context) => ArticleDetailScreen(
-                  article: article,
+                  article: {
+                    ...article,
+                    'livre': result['livre'],
+                    'titre': result['titre'],
+                    'chapitre': result['chapitre'],
+                  },
                 ),
               ),
             );
