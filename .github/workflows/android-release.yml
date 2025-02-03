@@ -34,22 +34,26 @@ jobs:
           # Create directories
           mkdir -p android/app
           
-          # Decode and create the keystore file
-          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > android/app/upload-keystore.jks
-          
-          # Create key.properties
+          # Create key.properties first
           echo "storePassword=${{ secrets.STORE_PASSWORD }}" > android/key.properties
           echo "keyPassword=${{ secrets.KEY_PASSWORD }}" >> android/key.properties
           echo "keyAlias=upload" >> android/key.properties
           echo "storeFile=../app/upload-keystore.jks" >> android/key.properties
           
-          # Debug: List files and verify
+          # Decode and create the keystore file
+          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > android/app/upload-keystore.jks
+          
+          # Debug: Show file structure and contents
           echo "=== Directory Structure ==="
           ls -R android/
           echo "=== Key Properties Content ==="
           cat android/key.properties
           echo "=== Keystore File Size ==="
           ls -l android/app/upload-keystore.jks
+          
+          # Verify file permissions
+          chmod 600 android/key.properties
+          chmod 600 android/app/upload-keystore.jks
       
       - name: Build APK
         run: flutter build apk --release
