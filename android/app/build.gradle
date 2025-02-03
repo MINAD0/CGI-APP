@@ -11,13 +11,10 @@ if (flutterRoot == null) {
     throw new GradleException("Flutter SDK not found. Define location with flutter.sdk in the local.properties file.")
 }
 
-def keystoreProperties = new Properties()
+// Load key.properties file
 def keystorePropertiesFile = rootProject.file('key.properties')
-if (keystorePropertiesFile.exists()) {
-    keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
-} else {
-    println "key.properties not found, using debug signing config"
-}
+def keystoreProperties = new Properties()
+keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
 
 apply plugin: 'com.android.application'
 apply plugin: 'kotlin-android'
@@ -50,28 +47,17 @@ android {
     }
 
     signingConfigs {
-        debug {
-            storeFile file("debug.keystore")
-            storePassword "android"
-            keyAlias "androiddebugkey"
-            keyPassword "android"
-        }
-        if (keystorePropertiesFile.exists()) {
-            release {
-                keyAlias keystoreProperties['keyAlias']
-                keyPassword keystoreProperties['keyPassword']
-                storeFile file(keystoreProperties['storeFile'])
-                storePassword keystoreProperties['storePassword']
-            }
+        release {
+            storeFile = file(keystoreProperties['storeFile'])
+            storePassword = keystoreProperties['storePassword']
+            keyAlias = keystoreProperties['keyAlias']
+            keyPassword = keystoreProperties['keyPassword']
         }
     }
 
     buildTypes {
-        debug {
-            signingConfig signingConfigs.debug
-        }
         release {
-            signingConfig keystorePropertiesFile.exists() ? signingConfigs.release : signingConfigs.debug
+            signingConfig signingConfigs.release
             minifyEnabled true
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
